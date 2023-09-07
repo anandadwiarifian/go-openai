@@ -18,8 +18,9 @@ func TestChatCompletionsStreamWrongModel(t *testing.T) {
 	client := NewClientWithConfig(config)
 	ctx := context.Background()
 
+	maxTokens := 5
 	req := ChatCompletionRequest{
-		MaxTokens: 5,
+		MaxTokens: &maxTokens,
 		Model:     "ada",
 		Messages: []ChatCompletionMessage{
 			{
@@ -59,8 +60,9 @@ func TestCreateChatCompletionStream(t *testing.T) {
 		checks.NoError(t, err, "Write error")
 	})
 
+	maxTokens := 5
 	stream, err := client.CreateChatCompletionStream(context.Background(), ChatCompletionRequest{
-		MaxTokens: 5,
+		MaxTokens: &maxTokens,
 		Model:     GPT3Dot5Turbo,
 		Messages: []ChatCompletionMessage{
 			{
@@ -154,8 +156,9 @@ func TestCreateChatCompletionStreamError(t *testing.T) {
 		checks.NoError(t, err, "Write error")
 	})
 
+	maxTokens := 5
 	stream, err := client.CreateChatCompletionStream(context.Background(), ChatCompletionRequest{
-		MaxTokens: 5,
+		MaxTokens: &maxTokens,
 		Model:     GPT3Dot5Turbo,
 		Messages: []ChatCompletionMessage{
 			{
@@ -193,8 +196,9 @@ func TestCreateChatCompletionStreamErrorWithDataPrefix(t *testing.T) {
 		checks.NoError(t, err, "Write error")
 	})
 
+	maxTokens := 5
 	stream, err := client.CreateChatCompletionStream(context.Background(), ChatCompletionRequest{
-		MaxTokens: 5,
+		MaxTokens: &maxTokens,
 		Model:     GPT3Dot5Turbo,
 		Messages: []ChatCompletionMessage{
 			{
@@ -234,8 +238,9 @@ func TestCreateChatCompletionStreamRateLimitError(t *testing.T) {
 		_, err := w.Write(dataBytes)
 		checks.NoError(t, err, "Write error")
 	})
+	maxTokens := 5
 	_, err := client.CreateChatCompletionStream(context.Background(), ChatCompletionRequest{
-		MaxTokens: 5,
+		MaxTokens: &maxTokens,
 		Model:     GPT3Dot5Turbo,
 		Messages: []ChatCompletionMessage{
 			{
@@ -273,8 +278,9 @@ func TestAzureCreateChatCompletionStreamRateLimitError(t *testing.T) {
 		})
 
 	apiErr := &APIError{}
+	maxTokens := 5
 	_, err := client.CreateChatCompletionStream(context.Background(), ChatCompletionRequest{
-		MaxTokens: 5,
+		MaxTokens: &maxTokens,
 		Model:     GPT3Dot5Turbo,
 		Messages: []ChatCompletionMessage{
 			{

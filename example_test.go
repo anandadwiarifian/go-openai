@@ -40,11 +40,12 @@ func Example() {
 func ExampleClient_CreateChatCompletionStream() {
 	client := openai.NewClient(os.Getenv("OPENAI_API_KEY"))
 
+	maxTokens := 20
 	stream, err := client.CreateChatCompletionStream(
 		context.Background(),
 		openai.ChatCompletionRequest{
 			Model:     openai.GPT3Dot5Turbo,
-			MaxTokens: 20,
+			MaxTokens: &maxTokens,
 			Messages: []openai.ChatCompletionMessage{
 				{
 					Role:    openai.ChatMessageRoleUser,

@@ -22,8 +22,9 @@ func TestChatCompletionsWrongModel(t *testing.T) {
 	client := NewClientWithConfig(config)
 	ctx := context.Background()
 
+	maxTokens := 5
 	req := ChatCompletionRequest{
-		MaxTokens: 5,
+		MaxTokens: &maxTokens,
 		Model:     "ada",
 		Messages: []ChatCompletionMessage{
 			{
@@ -55,8 +56,9 @@ func TestChatCompletions(t *testing.T) {
 	client, server, teardown := setupOpenAITestServer()
 	defer teardown()
 	server.RegisterHandler("/v1/chat/completions", handleChatCompletionEndpoint)
+	maxTokens := 5
 	_, err := client.CreateChatCompletion(context.Background(), ChatCompletionRequest{
-		MaxTokens: 5,
+		MaxTokens: &maxTokens,
 		Model:     GPT3Dot5Turbo,
 		Messages: []ChatCompletionMessage{
 			{
@@ -76,8 +78,9 @@ func TestChatCompletionsFunctions(t *testing.T) {
 	t.Run("bytes", func(t *testing.T) {
 		//nolint:lll
 		msg := json.RawMessage(`{"properties":{"count":{"type":"integer","description":"total number of words in sentence"},"words":{"items":{"type":"string"},"type":"array","description":"list of words in sentence"}},"type":"object","required":["count","words"]}`)
+		maxTokens := 5
 		_, err := client.CreateChatCompletion(context.Background(), ChatCompletionRequest{
-			MaxTokens: 5,
+			MaxTokens: &maxTokens,
 			Model:     GPT3Dot5Turbo0613,
 			Messages: []ChatCompletionMessage{
 				{
@@ -101,8 +104,9 @@ func TestChatCompletionsFunctions(t *testing.T) {
 			Count: 2,
 			Words: []string{"hello", "world"},
 		}
+		maxTokens := 5
 		_, err := client.CreateChatCompletion(context.Background(), ChatCompletionRequest{
-			MaxTokens: 5,
+			MaxTokens: &maxTokens,
 			Model:     GPT3Dot5Turbo0613,
 			Messages: []ChatCompletionMessage{
 				{
@@ -118,8 +122,9 @@ func TestChatCompletionsFunctions(t *testing.T) {
 		checks.NoError(t, err, "CreateChatCompletion with functions error")
 	})
 	t.Run("JSONSchemaDefinition", func(t *testing.T) {
+		maxTokens := 5
 		_, err := client.CreateChatCompletion(context.Background(), ChatCompletionRequest{
-			MaxTokens: 5,
+			MaxTokens: &maxTokens,
 			Model:     GPT3Dot5Turbo0613,
 			Messages: []ChatCompletionMessage{
 				{
@@ -155,8 +160,9 @@ func TestChatCompletionsFunctions(t *testing.T) {
 	})
 	t.Run("JSONSchemaDefinitionWithFunctionDefine", func(t *testing.T) {
 		// this is a compatibility check
+		maxTokens := 5
 		_, err := client.CreateChatCompletion(context.Background(), ChatCompletionRequest{
-			MaxTokens: 5,
+			MaxTokens: &maxTokens,
 			Model:     GPT3Dot5Turbo0613,
 			Messages: []ChatCompletionMessage{
 				{
@@ -197,8 +203,9 @@ func TestAzureChatCompletions(t *testing.T) {
 	defer teardown()
 	server.RegisterHandler("/openai/deployments/*", handleChatCompletionEndpoint)
 
+	maxTokens := 5
 	_, err := client.CreateChatCompletion(context.Background(), ChatCompletionRequest{
-		MaxTokens: 5,
+		MaxTokens: &maxTokens,
 		Model:     GPT3Dot5Turbo,
 		Messages: []ChatCompletionMessage{
 			{
@@ -263,7 +270,7 @@ func handleChatCompletionEndpoint(w http.ResponseWriter, r *http.Request) {
 			continue
 		}
 		// generate a random string of length completionReq.Length
-		completionStr := strings.Repeat("a", completionReq.MaxTokens)
+		completionStr := strings.Repeat("a", *completionReq.MaxTokens)
 
 		res.Choices = append(res.Choices, ChatCompletionChoice{
 			Message: ChatCompletionMessage{
@@ -274,7 +281,7 @@ func handleChatCompletionEndpoint(w http.ResponseWriter, r *http.Request) {
 		})
 	}
 	inputTokens := numTokens(completionReq.Messages[0].Content) * n
-	completionTokens := completionReq.MaxTokens * n
+	completionTokens := *completionReq.MaxTokens * n
 	res.Usage = Usage{
 		PromptTokens:     inputTokens,
 		CompletionTokens: completionTokens,
