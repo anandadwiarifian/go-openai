@@ -20,6 +20,24 @@ type Client struct {
 	createFormBuilder func(io.Writer) utils.FormBuilder
 }
 
+type Response interface {
+	SetHeader(http.Header)
+}
+
+type httpHeader http.Header
+
+func (h *httpHeader) SetHeader(header http.Header) {
+	*h = httpHeader(header)
+}
+
+func (h *httpHeader) Header() http.Header {
+	return http.Header(*h)
+}
+
+func (h *httpHeader) GetRateLimitHeaders() RateLimitHeaders {
+	return newRateLimitHeaders(h.Header())
+}
+
 // NewClient creates new OpenAI API client.
 func NewClient(authToken string) *Client {
 	config := DefaultConfig(authToken)
@@ -65,6 +83,12 @@ func withContentType(contentType string) requestOption {
 	}
 }
 
+func withBetaAssistantV1() requestOption {
+	return func(args *requestOptions) {
+		args.header.Set("OpenAI-Beta", "assistants=v1")
+	}
+}
+
 func (c *Client) newRequest(ctx context.Context, method, url string, setters ...requestOption) (*http.Request, error) {
 	// Default Options
 	args := &requestOptions{
@@ -82,14 +106,14 @@ func (c *Client) newRequest(ctx context.Context, method, url string, setters ...
 	return req, nil
 }
 
-func (c *Client) sendRequest(req *http.Request, v any) error {
-	req.Header.Set("Accept", "application/json; charset=utf-8")
+func (c *Client) sendRequest(req *http.Request, v Response) error {
+	req.Header.Set("Accept", "application/json")
 
 	// Check whether Content-Type is already set, Upload Files API requires
 	// Content-Type == multipart/form-data
 	contentType := req.Header.Get("Content-Type")
 	if contentType == "" {
-		req.Header.Set("Content-Type", "application/json; charset=utf-8")
+		req.Header.Set("Content-Type", "application/json")
 	}
 
 	res, err := c.config.HTTPClient.Do(req)
@@ -101,6 +125,10 @@ func (c *Client) sendRequest(req *http.Request, v any) error {
 
 	if isFailureStatusCode(res) {
 		return c.handleErrorResp(res)
+	}
+
+	if v != nil {
+		v.SetHeader(res.Header)
 	}
 
 	return decodeResponse(res.Body, v)
@@ -138,6 +166,7 @@ func sendRequestStream[T streamable](client *Client, req *http.Request) (*stream
 		response:           resp,
 		errAccumulator:     utils.NewErrorAccumulator(),
 		unmarshaler:        &utils.JSONUnmarshaler{},
+		httpHeader:         httpHeader(resp.Header),
 	}, nil
 }
 
@@ -146,7 +175,7 @@ func (c *Client) setCommonHeaders(req *http.Request) {
 	// Azure API Key authentication
 	if c.config.APIType == APITypeAzure {
 		req.Header.Set(AzureAPIKeyHeader, c.config.authToken)
-	} else {
+	} else if c.config.authToken != "" {
 		// OpenAI or Azure AD authentication
 		req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", c.config.authToken))
 	}
@@ -164,10 +193,14 @@ func decodeResponse(body io.Reader, v any) error {
 		return nil
 	}
 
-	if result, ok := v.(*string); ok {
-		return decodeString(body, result)
+	switch o := v.(type) {
+	case *string:
+		return decodeString(body, o)
+	case *audioTextResponse:
+		return decodeString(body, &o.Text)
+	default:
+		return json.NewDecoder(body).Decode(v)
 	}
-	return json.NewDecoder(body).Decode(v)
 }
 
 func decodeString(body io.Reader, output *string) error {
@@ -188,7 +221,7 @@ func (c *Client) fullURL(suffix string, args ...any) string {
 		baseURL = strings.TrimRight(baseURL, "/")
 		// if suffix is /models change to {endpoint}/openai/models?api-version=2022-12-01
 		// https://learn.microsoft.com/en-us/rest/api/cognitiveservices/azureopenaistable/models/list?tabs=HTTP
-		if strings.Contains(suffix, "/models") {
+		if strings.Contains(suffix, "/models") || strings.Contains(suffix, "/assistants") {
 			return fmt.Sprintf("%s/%s%s?api-version=%s", baseURL, azureAPIPrefix, suffix, c.config.APIVersion)
 		}
 		azureDeploymentName := "UNKNOWN"

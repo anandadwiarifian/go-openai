@@ -2,14 +2,13 @@ package openai_test
 
 import (
 	"context"
-
-	. "github.com/sashabaranov/go-openai"
-	"github.com/sashabaranov/go-openai/internal/test/checks"
-
 	"encoding/json"
 	"fmt"
 	"net/http"
 	"testing"
+
+	"github.com/sashabaranov/go-openai"
+	"github.com/sashabaranov/go-openai/internal/test/checks"
 )
 
 const testFineTuninigJobID = "fine-tuning-job-id"
@@ -20,41 +19,56 @@ func TestFineTuningJob(t *testing.T) {
 	defer teardown()
 	server.RegisterHandler(
 		"/v1/fine_tuning/jobs",
-		func(w http.ResponseWriter, r *http.Request) {
-			var resBytes []byte
-			resBytes, _ = json.Marshal(FineTuningJob{})
+		func(w http.ResponseWriter, _ *http.Request) {
+			resBytes, _ := json.Marshal(openai.FineTuningJob{
+				Object:         "fine_tuning.job",
+				ID:             testFineTuninigJobID,
+				Model:          "davinci-002",
+				CreatedAt:      1692661014,
+				FinishedAt:     1692661190,
+				FineTunedModel: "ft:davinci-002:my-org:custom_suffix:7q8mpxmy",
+				OrganizationID: "org-123",
+				ResultFiles:    []string{"file-abc123"},
+				Status:         "succeeded",
+				ValidationFile: "",
+				TrainingFile:   "file-abc123",
+				Hyperparameters: openai.Hyperparameters{
+					Epochs: "auto",
+				},
+				TrainedTokens: 5768,
+			})
 			fmt.Fprintln(w, string(resBytes))
 		},
 	)
 
 	server.RegisterHandler(
-		"/fine_tuning/jobs/"+testFineTuninigJobID+"/cancel",
-		func(w http.ResponseWriter, r *http.Request) {
-			resBytes, _ := json.Marshal(FineTuningJob{})
+		"/v1/fine_tuning/jobs/"+testFineTuninigJobID+"/cancel",
+		func(w http.ResponseWriter, _ *http.Request) {
+			resBytes, _ := json.Marshal(openai.FineTuningJob{})
 			fmt.Fprintln(w, string(resBytes))
 		},
 	)
 
 	server.RegisterHandler(
 		"/v1/fine_tuning/jobs/"+testFineTuninigJobID,
-		func(w http.ResponseWriter, r *http.Request) {
+		func(w http.ResponseWriter, _ *http.Request) {
 			var resBytes []byte
-			resBytes, _ = json.Marshal(FineTuningJob{})
+			resBytes, _ = json.Marshal(openai.FineTuningJob{})
 			fmt.Fprintln(w, string(resBytes))
 		},
 	)
 
 	server.RegisterHandler(
 		"/v1/fine_tuning/jobs/"+testFineTuninigJobID+"/events",
-		func(w http.ResponseWriter, r *http.Request) {
-			resBytes, _ := json.Marshal(FineTuningJobEventList{})
+		func(w http.ResponseWriter, _ *http.Request) {
+			resBytes, _ := json.Marshal(openai.FineTuningJobEventList{})
 			fmt.Fprintln(w, string(resBytes))
 		},
 	)
 
 	ctx := context.Background()
 
-	_, err := client.CreateFineTuningJob(ctx, FineTuningJobRequest{})
+	_, err := client.CreateFineTuningJob(ctx, openai.FineTuningJobRequest{})
 	checks.NoError(t, err, "CreateFineTuningJob error")
 
 	_, err = client.CancelFineTuningJob(ctx, testFineTuninigJobID)
@@ -69,22 +83,22 @@ func TestFineTuningJob(t *testing.T) {
 	_, err = client.ListFineTuningJobEvents(
 		ctx,
 		testFineTuninigJobID,
-		ListFineTuningJobEventsWithAfter("last-event-id"),
+		openai.ListFineTuningJobEventsWithAfter("last-event-id"),
 	)
 	checks.NoError(t, err, "ListFineTuningJobEvents error")
 
 	_, err = client.ListFineTuningJobEvents(
 		ctx,
 		testFineTuninigJobID,
-		ListFineTuningJobEventsWithLimit(10),
+		openai.ListFineTuningJobEventsWithLimit(10),
 	)
 	checks.NoError(t, err, "ListFineTuningJobEvents error")
 
 	_, err = client.ListFineTuningJobEvents(
 		ctx,
 		testFineTuninigJobID,
-		ListFineTuningJobEventsWithAfter("last-event-id"),
-		ListFineTuningJobEventsWithLimit(10),
+		openai.ListFineTuningJobEventsWithAfter("last-event-id"),
+		openai.ListFineTuningJobEventsWithLimit(10),
 	)
 	checks.NoError(t, err, "ListFineTuningJobEvents error")
 }
